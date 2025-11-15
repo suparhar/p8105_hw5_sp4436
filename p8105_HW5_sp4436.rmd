@@ -58,7 +58,7 @@ bday_results |>
   geom_line()
 ```
 
-The probability of observing at least one shared birthday increases nonlinearly as group size grows. It is nearly zero for small groups (fewer than 10 people) and it rises quickly afterward. Around 23 people the probability exceeds 50%, and by 40 people it is above 90%.
+The probability of at least one shared birthday increases rapidly with group size. Around 23 people, the probability exceeds 50%, and by 50 people it is over 95%. It is nearly zero for small groups (fewer than 10 people) and it rises quickly afterward. 
 
 ## Problem 2
 
@@ -171,7 +171,7 @@ combined |>
   theme_minimal()
 ```
 
-The black line shows that the sample mean is an unbiased estimator. across all simulations, the average estimate closely matches the true value of μ. The purple line showing the average estimate only among tests that reject the null is biased upward when μ is small. This occurs because low effect sizes produce low power and conditioning on significance (p < 0.05) captures the unusually large positive sample means that generate rejection. As μ increases and power approaches 100%, nearly all samples reject the null, causing the conditional (purple) and unconditional (black) averages to converge toward the true μ.
+The black line shows that the sample mean is an unbiased estimator: across all simulations, the average μ̂ closely matches the true μ. The purple line, which conditions on rejecting the null, is biased upward for small μ because only unusually large samples yield p < 0.05. As μ grows and power approaches 100%, the conditional and unconditional averages converge.
 
 ## Problem 3
 
@@ -186,6 +186,8 @@ homicide_df =
 ```
 
 The raw data has 52179 observations with 12 variables: `uid`, `reported_date`, `victim_last`, `victim_first`, `victim_race`, `victim_age`, `victim_sex`, `city`, `state`, `lat`, `lon`, `disposition`. There are 120 NAs between `lat` and `lon`. 
+
+The dataset includes victim demographics (name, age, sex, race), incident date, location (city and state), geographical coordinates, and case disposition. 
 
 ```{r Murder numbers}
 city_summary =
@@ -225,7 +227,6 @@ bal
 ```
 
 ```{r}
-#For each city, run a prop.test using unsolved_homicides and total_homicides
 city_tests =
   city_summary |>
   mutate(
@@ -250,30 +251,47 @@ city_tests_ordered =
   arrange(estimate) |>
   mutate(city_state = factor(city_state, levels = city_state))
 
-ggplot(city_tests_ordered, aes(x = city_state, y = estimate)) +
-  
-  geom_point(color = "#4B0082", size = 3) +
+ggplot(city_tests_ordered, aes(
+  x = estimate,
+  y = reorder(city_state, estimate))
+  ) +
   
   geom_errorbar(
-    aes(ymin = conf.low, ymax = conf.high),
+    aes(xmin = conf.low, xmax = conf.high),
+    orientation = "y",
     width = 0.15,
+    color = "#4B0082",
+    linewidth = 0.7
+  ) +
+
+  #point estimates
+  geom_point(
+    size = 1.7,
     color = "#4B0082"
   ) +
-  
-  #Dashed line at 0.50
-  geom_hline(
-    yintercept = 0.50,
-    color = "red",
+
+  #0.50 reference line
+  geom_vline(
+    xintercept = 0.50,
     linetype = "dashed",
+    color = "red",
     linewidth = 0.9
   ) +
-  
-  coord_flip() +
+
   labs(
-    title = "Proportion of Unsolved Homicides by City",
-    x = "City",
-    y = "Estimated Proportion Unsolved"
+    title = "Estimated Proportion of Unsolved Homicides by City",
+    x = "Estimated Proportion Unsolved",
+    y = "City"
   ) +
-  theme_minimal()
+
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.y = element_text(size = 10),
+    axis.text.x = element_text(size = 11),
+    plot.title = element_text(face = "bold", hjust = 0.5)
+  )
+
 ```
 
