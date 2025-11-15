@@ -15,6 +15,9 @@ library(ggridges)
 library(dplyr)
 library(janitor)
 library(patchwork)
+library(broom)
+
+set.seed(1)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -33,3 +36,41 @@ scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
 
+## Problem 1
+
+```{r Creating Function}
+bday_sim = function(n_room) {
+  
+  birthdays = sample(1:365, n_room, replace = TRUE)
+  
+  repeated_bday = length(unique(birthdays)) < n_room
+  
+  repeated_bday
+}
+
+bday_sim(20)
+```
+
+```{r Simulation}
+bday_results = 
+  expand_grid(
+    group_size = 2:50,
+    iter = 1:10000
+  ) |> 
+  mutate(
+    result = map_lgl(group_size, bday_sim)
+  ) |> 
+  group_by(group_size) |> 
+  summarize(
+    prob_repeat = mean(result)
+  )
+```
+
+```{r Probability Plot}
+bday_results |> 
+  ggplot(aes(x = group_size, y = prob_repeat)) + 
+  geom_point() + 
+  geom_line()
+```
+
+The probability of observing at least one shared birthday increases nonlinearly as group size grows. It is nearly zero for small groups (fewer than 10 people), but it rises quickly afterward. Around 20–25 people the probability exceeds 50%, and by 40 people it is above 90%.
