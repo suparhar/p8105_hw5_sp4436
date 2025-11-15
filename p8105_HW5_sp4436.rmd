@@ -19,21 +19,6 @@ library(broom)
 
 set.seed(1)
 
-knitr::opts_chunk$set(
-  fig.width = 6,
-  fig.asp = .6,
-  out.width = "90%"
-)
-
-theme_set(theme_minimal() + theme(legend.position = "bottom"))
-
-options(
-  ggplot2.continuous.colour = "viridis",
-  ggplot2.continuous.fill = "viridis"
-)
-
-scale_colour_discrete = scale_colour_viridis_d
-scale_fill_discrete = scale_fill_viridis_d
 ```
 
 ## Problem 1
@@ -186,7 +171,7 @@ combined |>
   theme_minimal()
 ```
 
-The black line shows that the sample mean is an unbiased estimator. across all simulations, the average estimate closely matches the true value of μ. In contrast, the purple line showing the average estimate only among tests that reject the null is biased upward when μ is small. This occurs because low effect sizes produce low power, and conditioning on significance (p < 0.05) selectively captures the unusually large positive sample means that happen to generate rejection. As μ increases and power approaches 100%, nearly all samples reject the null, causing the conditional (purple) and unconditional (black) averages to converge toward the true μ.
+The black line shows that the sample mean is an unbiased estimator. across all simulations, the average estimate closely matches the true value of μ. The purple line showing the average estimate only among tests that reject the null is biased upward when μ is small. This occurs because low effect sizes produce low power and conditioning on significance (p < 0.05) captures the unusually large positive sample means that generate rejection. As μ increases and power approaches 100%, nearly all samples reject the null, causing the conditional (purple) and unconditional (black) averages to converge toward the true μ.
 
 ## Problem 3
 
@@ -267,11 +252,11 @@ city_tests_ordered =
 
 ggplot(city_tests_ordered, aes(x = city_state, y = estimate)) +
   
-  geom_point(color = "#4B0082", size = 2.5) +
+  geom_point(color = "#4B0082", size = 3) +
   
   geom_errorbar(
     aes(ymin = conf.low, ymax = conf.high),
-    width = 0.2,
+    width = 0.15,
     color = "#4B0082"
   ) +
   
@@ -280,7 +265,7 @@ ggplot(city_tests_ordered, aes(x = city_state, y = estimate)) +
     yintercept = 0.50,
     color = "red",
     linetype = "dashed",
-    linewidth = 1
+    linewidth = 0.9
   ) +
   
   coord_flip() +
