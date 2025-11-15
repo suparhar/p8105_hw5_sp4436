@@ -1,0 +1,35 @@
+---
+title: "p8105_hw5_sp4436"
+author: "Sukhman Parhar"
+date: "2025-11-15"
+output: github_document
+---
+
+```{r Load Packages and set Themes}
+library(tidyverse)
+library(readxl)
+library(haven)
+library(readr)
+library(p8105.datasets)
+library(ggridges)
+library(dplyr)
+library(janitor)
+library(patchwork)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
