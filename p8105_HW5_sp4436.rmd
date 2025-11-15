@@ -74,3 +74,108 @@ bday_results |>
 ```
 
 The probability of observing at least one shared birthday increases nonlinearly as group size grows. It is nearly zero for small groups (fewer than 10 people), but it rises quickly afterward. Around 20–25 people the probability exceeds 50%, and by 40 people it is above 90%.
+
+## Problem 2
+
+```{r Making Function}
+sim_one_sample = function(n = 30, true_mu = 0, true_sigma = 5) {
+  
+#Simulate data
+  x = rnorm(n, mean = true_mu, sd = true_sigma)
+  
+#One-sample t-test of H0: mu = 0
+  test_result = t.test(x, mu = 0)
+  
+#Return estimate + p-value
+  broom::tidy(test_result) |>
+    select(estimate, p.value)
+}
+```
+
+```{r Sim}
+sim_results = 
+  expand_grid(
+    true_mu = 0:6,
+    iter = 1:5000
+  ) |>
+  mutate(
+    output = map(true_mu, ~ sim_one_sample(true_mu = .x))
+  ) |>
+  unnest(output)
+
+sim_results
+```
+
+```{r Power Plots}
+power_summary = sim_results |>
+  mutate(true_mu = as.numeric(true_mu)) |>
+  group_by(true_mu) |>
+  summarize(power = mean(p.value < 0.05))
+
+power_summary |>
+  ggplot(aes(x = true_mu, y = power)) +
+  geom_line(linewidth = 1.2, color = "blue") +
+  geom_point(size = 3, color = "blue") +
+
+  #Type I error reference line
+  geom_hline(yintercept = 0.05, linetype = "longdash", color = "red", linewidth = 1.1) +
+
+  #80% power reference line
+  geom_hline(yintercept = 0.80, linetype = "longdash", color = "purple", linewidth = 1.1) +
+
+  labs(
+    title = "Statistical Power vs. Effect Size",
+    subtitle = "Based on 5,000 simulations per group (n = 30)",
+    x = "True Value of μ (Effect Size)",
+    y = "Proportion of Times H₀ Rejected (Power)"
+  ) +
+  theme_minimal()
+```
+
+Power increases monotonically as the true mean moves further from 0. When μ = 0, the rejection rate is approximately 0.05, matching the expected Type I error rate. As μ increases, the null hypothesis becomes increasingly false, and the probability of rejection rises sharply, exceeding 80% once μ is large enough relative to the noise.
+
+```{r mu plots}
+#Average estimate across all simulations
+avg_estimate =
+  sim_results |>
+  group_by(true_mu) |>
+  summarize(mean_estimate = mean(estimate))
+
+#Average estimate conditional on rejection
+avg_estimate_reject =
+  sim_results |>
+  mutate(reject = p.value < 0.05) |>
+  group_by(true_mu) |>
+  summarize(mean_estimate_reject = mean(estimate[reject]))
+
+#Combine both
+combined =
+  avg_estimate |>
+  left_join(avg_estimate_reject, by = "true_mu")
+
+#Overlay
+combined |>
+  ggplot(aes(x = true_mu)) +
+  
+  #Unconditional mean (black)
+  geom_line(aes(y = mean_estimate),
+            color = "black", linewidth = 1.2) +
+  geom_point(aes(y = mean_estimate),
+             color = "black", size = 3) +
+  
+  #Conditional-on-rejection mean (purple)
+  geom_line(aes(y = mean_estimate_reject),
+            color = "purple", linewidth = 1.2) +
+  geom_point(aes(y = mean_estimate_reject),
+             color = "purple", size = 3) +
+  
+  labs(
+    title = "Average Estimate of μ vs True μ",
+    subtitle = "Black: overall mean estimate; Purple: mean estimate among rejections",
+    x = "True μ",
+    y = "Average estimate of μ̂"
+  ) +
+  theme_minimal()
+```
+
+The black line shows that the sample mean is an unbiased estimator: across all simulations, the average estimate closely matches the true value of μ. The purple line, which conditions on rejection, is biased upward when μ is small — only extreme positive samples lead to significance when the true effect is near zero. As μ grows and power increases, the conditional and unconditional estimates converge, because nearly all samples reject the null.
