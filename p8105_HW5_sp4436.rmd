@@ -73,7 +73,7 @@ bday_results |>
   geom_line()
 ```
 
-The probability of observing at least one shared birthday increases nonlinearly as group size grows. It is nearly zero for small groups (fewer than 10 people), but it rises quickly afterward. Around 20–25 people the probability exceeds 50%, and by 40 people it is above 90%.
+The probability of observing at least one shared birthday increases nonlinearly as group size grows. It is nearly zero for small groups (fewer than 10 people) and it rises quickly afterward. Around 23 people the probability exceeds 50%, and by 40 people it is above 90%.
 
 ## Problem 2
 
@@ -93,7 +93,8 @@ sim_one_sample = function(n = 30, true_mu = 0, true_sigma = 5) {
 ```
 
 ```{r Sim}
-sim_results = 
+set.seed(1)
+sim_results =
   expand_grid(
     true_mu = 0:6,
     iter = 1:5000
@@ -103,7 +104,14 @@ sim_results =
   ) |>
   unnest(output)
 
-sim_results
+sim_results |>
+  select(
+    true_mu,
+    mu_hat = estimate,
+    p_value = p.value
+  ) |>
+  knitr::kable(digits = 3) |>
+  head(10)
 ```
 
 ```{r Power Plots}
@@ -132,7 +140,7 @@ power_summary |>
   theme_minimal()
 ```
 
-Power increases monotonically as the true mean moves further from 0. When μ = 0, the rejection rate is approximately 0.05, matching the expected Type I error rate. As μ increases, the null hypothesis becomes increasingly false, and the probability of rejection rises sharply, exceeding 80% once μ is large enough relative to the noise.
+Power increases monotonically as the true mean moves further from 0. As effect size increases, power also increases. When μ = 0, the rejection rate is approximately 0.05, matching the expected Type I error rate. As μ increases, the null hypothesis becomes more false, and the probability of rejection rises.
 
 ```{r mu plots}
 #Average estimate across all simulations
@@ -178,4 +186,109 @@ combined |>
   theme_minimal()
 ```
 
-The black line shows that the sample mean is an unbiased estimator: across all simulations, the average estimate closely matches the true value of μ. The purple line, which conditions on rejection, is biased upward when μ is small — only extreme positive samples lead to significance when the true effect is near zero. As μ grows and power increases, the conditional and unconditional estimates converge, because nearly all samples reject the null.
+The black line shows that the sample mean is an unbiased estimator. across all simulations, the average estimate closely matches the true value of μ. In contrast, the purple line showing the average estimate only among tests that reject the null is biased upward when μ is small. This occurs because low effect sizes produce low power, and conditioning on significance (p < 0.05) selectively captures the unusually large positive sample means that happen to generate rejection. As μ increases and power approaches 100%, nearly all samples reject the null, causing the conditional (purple) and unconditional (black) averages to converge toward the true μ.
+
+## Problem 3
+
+```{r Load and edit data}
+homicide_df = 
+  read_csv("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv") |>
+  janitor::clean_names() |>
+  mutate(
+    city_state = str_c(city, ", ", state),
+    unsolved = disposition %in% c("Closed without arrest", "Open/No arrest")
+  )
+```
+
+The raw data has 52179 observations with 12 variables: `uid`, `reported_date`, `victim_last`, `victim_first`, `victim_race`, `victim_age`, `victim_sex`, `city`, `state`, `lat`, `lon`, `disposition`. There are 120 NAs between `lat` and `lon`. 
+
+```{r Murder numbers}
+city_summary =
+  homicide_df |>
+  group_by(city_state) |>
+  summarize(
+    total_homicides = n(),
+    unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest")),
+    .groups = "drop"
+  )
+
+knitr::kable(
+  city_summary,
+  caption = "Total and Unsolved Homicides by City",
+  col.names = c("City-State", "Total Homicides", "Unsolved Homicides"),
+  digits = 0
+)
+```
+
+```{r Baltimore ONLY}
+#Filter for Baltimore
+baltimore_data = city_summary |>
+  filter(city_state == "Baltimore, MD")
+
+#Run proportion test using total + unsolved
+bal_prop_test = with(baltimore_data, {
+  prop.test(
+    x = unsolved_homicides, 
+    n = total_homicides
+  )
+})
+
+#Tidy output
+bal = broom::tidy(bal_prop_test)
+
+bal
+```
+
+```{r}
+#For each city, run a prop.test using unsolved_homicides and total_homicides
+city_tests =
+  city_summary |>
+  mutate(
+    prop_tests = map2(
+      unsolved_homicides,
+      total_homicides,
+      ~ prop.test(x = .x, n = .y)
+    ),
+    
+    tidy_results = map(prop_tests, broom::tidy)
+  ) |>
+  unnest(tidy_results) |>
+  select(city_state, estimate, conf.low, conf.high)
+
+city_tests
+```
+
+```{r Plot all Cities}
+#Order cities by estimated proportion unsolved
+city_tests_ordered =
+  city_tests |>
+  arrange(estimate) |>
+  mutate(city_state = factor(city_state, levels = city_state))
+
+ggplot(city_tests_ordered, aes(x = city_state, y = estimate)) +
+  
+  geom_point(color = "#4B0082", size = 2.5) +
+  
+  geom_errorbar(
+    aes(ymin = conf.low, ymax = conf.high),
+    width = 0.2,
+    color = "#4B0082"
+  ) +
+  
+  #Dashed line at 0.50
+  geom_hline(
+    yintercept = 0.50,
+    color = "red",
+    linetype = "dashed",
+    linewidth = 1
+  ) +
+  
+  coord_flip() +
+  labs(
+    title = "Proportion of Unsolved Homicides by City",
+    x = "City",
+    y = "Estimated Proportion Unsolved"
+  ) +
+  theme_minimal()
+```
+
